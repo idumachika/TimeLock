@@ -70,7 +70,7 @@
             (ok true))
         ERR-INVALID-AMOUNT))
 
-        (define-public (withdraw (amount uint))
+(define-public (withdraw (amount uint))
     (let ((participant-info (unwrap! (map-get? participants {participant: tx-sender}) 
                                    ERR-NO-PARTICIPANT)))
         (if (and
@@ -110,7 +110,7 @@
             (ok true))))
             
 
-            (define-public (add-milestone (description (string-ascii 256)) 
+(define-public (add-milestone (description (string-ascii 256)) 
                             (required-votes uint))
     (let ((new-milestone-id (+ (var-get last-milestone-id) u1)))
         (if (is-validator tx-sender)
@@ -124,7 +124,7 @@
                 (var-set last-milestone-id new-milestone-id)
                 (ok new-milestone-id))
             ERR-NOT-AUTHORIZED)))
-            (define-public (complete-milestone (milestone-id uint))
+(define-public (complete-milestone (milestone-id uint))
     (let (
         (milestone (unwrap! (map-get? milestones {milestone-id: milestone-id})
                          ERR-MILESTONE-NOT-FOUND))
@@ -138,4 +138,69 @@
                   {completed: true,
                    completion-time: (some block-height)}))
         (ok true)))
+
+
+        ;; Emergency Recovery Functions
+(define-public (initiate-emergency)
+    (let ((participant-info (unwrap! (map-get? participants {participant: tx-sender}) 
+                                   ERR-NO-PARTICIPANT)))
+        (if (and
+            (>= (get voting-power participant-info) u20) ;; Must have significant stake
+            (not (var-get emergency-state)))
+            (begin
+                (var-set emergency-state true)
+                (var-set emergency-votes (get voting-power participant-info))
+                (ok true))
+            ERR-NOT-AUTHORIZED)))
+
+
+            (define-public (vote-emergency)
+    (let ((participant-info (unwrap! (map-get? participants {participant: tx-sender}) 
+                                   ERR-NO-PARTICIPANT)))
+        (if (and 
+            (var-get emergency-state)
+            (not (get has-voted participant-info)))
+            (begin
+                (var-set emergency-votes (+ (var-get emergency-votes) 
+                                          (get voting-power participant-info)))
+                (ok true))
+            ERR-NO-EMERGENCY)))
+
+            ;; read only functions
+(define-read-only (get-participant-info (participant principal))
+    (map-get? participants {participant: participant}))
+
+(define-read-only (get-milestone-info (milestone-id uint))
+    (map-get? milestones {milestone-id: milestone-id}))
+
+(define-read-only (get-total-pool)
+    (var-get total-pool))
+
+(define-read-only (get-vote-count)
+    (var-get release-votes))
+
+(define-read-only (can-release-funds)
+    (>= (var-get release-votes)
+        (* (var-get participant-count) VOTE_THRESHOLD)))
+
+(define-read-only (get-emergency-status)
+    {is-active: (var-get emergency-state),
+     current-votes: (var-get emergency-votes),
+     threshold: (var-get emergency-threshold)})
+     
+;; private functions
+(define-private (is-validator (account principal))
+    (default-to 
+        false
+        (get active (map-get? validators {validator: account}))))
+
+(define-private (calculate-voting-power (amount uint))
+    (/ (* amount u100) MIN_DEPOSIT))
+
+(define-private (lock-period-passed (join-time uint))
+    (>= block-height (+ join-time MIN_LOCK_PERIOD)))
+
+(define-private (get-milestone-count)
+    (var-get last-milestone-id))
+
 
