@@ -80,7 +80,7 @@
                 (try! (as-contract (stx-transfer? amount (as-contract tx-sender) tx-sender)))
                 (ok true))
             ERR-NOT-AUTHORIZED)))
-            (define-public (vote-for-release)
+(define-public (vote-for-release)
     (let ((participant-info (unwrap! (map-get? participants {participant: tx-sender}) 
                                    ERR-NO-PARTICIPANT)))
         (if (and
@@ -154,19 +154,19 @@
             ERR-NOT-AUTHORIZED)))
 
 
-            (define-public (vote-emergency)
-    (let ((participant-info (unwrap! (map-get? participants {participant: tx-sender}) 
-                                   ERR-NO-PARTICIPANT)))
-        (if (and 
-            (var-get emergency-state)
-            (not (get has-voted participant-info)))
-            (begin
-                (var-set emergency-votes (+ (var-get emergency-votes) 
-                                          (get voting-power participant-info)))
-                (ok true))
-            ERR-NO-EMERGENCY)))
+(define-public (vote-emergency)
+        (let ((participant-info (unwrap! (map-get? participants {participant: tx-sender}) 
+                                    ERR-NO-PARTICIPANT)))
+            (if (and 
+                (var-get emergency-state)
+                (not (get has-voted participant-info)))
+                (begin
+                    (var-set emergency-votes (+ (var-get emergency-votes) 
+                                            (get voting-power participant-info)))
+                    (ok true))
+                ERR-NO-EMERGENCY)))
 
-            ;; read only functions
+ ;; read only functions
 (define-read-only (get-participant-info (participant principal))
     (map-get? participants {participant: participant}))
 
