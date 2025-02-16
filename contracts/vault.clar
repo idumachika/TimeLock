@@ -52,4 +52,22 @@
     {validator: principal}
     {active: bool})
 
+;; public functions
+(define-public (deposit (amount uint))
+    (if (>= amount MIN_DEPOSIT)
+        (begin
+            (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
+            ;; Batch state updates to reduce operations
+            (let ((new-voting-power (calculate-voting-power amount)))
+                (map-set participants 
+                    {participant: tx-sender}
+                    {amount: amount,
+                     join-time: block-height,
+                     voting-power: new-voting-power,
+                     has-voted: false})
+                (var-set total-pool (+ (var-get total-pool) amount))
+                (var-set participant-count (+ (var-get participant-count) u1)))
+            (ok true))
+        ERR-INVALID-AMOUNT))
+
 
