@@ -70,4 +70,72 @@
             (ok true))
         ERR-INVALID-AMOUNT))
 
+        (define-public (withdraw (amount uint))
+    (let ((participant-info (unwrap! (map-get? participants {participant: tx-sender}) 
+                                   ERR-NO-PARTICIPANT)))
+        (if (and
+            (can-release-funds)
+            (<= amount (get amount participant-info)))
+            (begin
+                (try! (as-contract (stx-transfer? amount (as-contract tx-sender) tx-sender)))
+                (ok true))
+            ERR-NOT-AUTHORIZED)))
+            (define-public (vote-for-release)
+    (let ((participant-info (unwrap! (map-get? participants {participant: tx-sender}) 
+                                   ERR-NO-PARTICIPANT)))
+        (if (and
+            (not (get has-voted participant-info))
+            (lock-period-passed (get join-time participant-info)))
+            (begin
+                (map-set participants
+                    {participant: tx-sender}
+                    (merge participant-info {has-voted: true}))
+                (var-set release-votes 
+                    (+ (var-get release-votes) 
+                       (get voting-power participant-info)))
+                (ok true))
+            ERR-ALREADY-VOTED)))
+
+(define-public (batch-vote-process (milestone-ids (list 10 uint)))
+    (let ((participant-info (unwrap! (map-get? participants {participant: tx-sender}) 
+                                   ERR-NO-PARTICIPANT)))
+        (asserts! (not (get has-voted participant-info)) ERR-ALREADY-VOTED)
+        (asserts! (lock-period-passed (get join-time participant-info)) ERR-LOCK-PERIOD-NOT-MET)
+        (begin
+            (map-set participants
+                {participant: tx-sender}
+                (merge participant-info {has-voted: true}))
+            (var-set release-votes (+ (var-get release-votes) 
+                                    (get voting-power participant-info)))
+            (ok true))))
+            
+
+            (define-public (add-milestone (description (string-ascii 256)) 
+                            (required-votes uint))
+    (let ((new-milestone-id (+ (var-get last-milestone-id) u1)))
+        (if (is-validator tx-sender)
+            (begin
+                (map-set milestones
+                    {milestone-id: new-milestone-id}
+                    {description: description,
+                     required-votes: required-votes,
+                     completed: false,
+                     completion-time: none})
+                (var-set last-milestone-id new-milestone-id)
+                (ok new-milestone-id))
+            ERR-NOT-AUTHORIZED)))
+            (define-public (complete-milestone (milestone-id uint))
+    (let (
+        (milestone (unwrap! (map-get? milestones {milestone-id: milestone-id})
+                         ERR-MILESTONE-NOT-FOUND))
+        (current-votes (var-get release-votes))
+        )
+        (asserts! (is-validator tx-sender) ERR-NOT-AUTHORIZED)
+        (asserts! (>= current-votes (get required-votes milestone)) ERR-INSUFFICIENT-VOTES)
+        (map-set milestones
+            {milestone-id: milestone-id}
+            (merge milestone 
+                  {completed: true,
+                   completion-time: (some block-height)}))
+        (ok true)))
 
