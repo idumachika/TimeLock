@@ -132,3 +132,34 @@ describe('Voting Tests', () => {
     expect(result.error).toBe('u5');
   });
 });
+
+describe('Milestone Tests', () => {
+  beforeEach(() => {
+    contractState.validators.set('validator1', true);
+  });
+
+  it('should allow validators to add milestones', () => {
+    const result = contractFunctions.addMilestone(
+      'validator1',
+      'First milestone',
+      1000
+    );
+    
+    expect(result.success).toBe(true);
+    
+    const milestone = contractState.milestones.get(1);
+    expect(milestone?.description).toBe('First milestone');
+    expect(milestone?.completed).toBe(false);
+  });
+
+  it('should prevent non-validators from adding milestones', () => {
+    const result = contractFunctions.addMilestone(
+      'sender1',
+      'Unauthorized milestone',
+      1000
+    );
+    
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('u1');
+  });
+});
