@@ -185,3 +185,24 @@ describe('Emergency Recovery Tests', () => {
     expect(result.error).toBe('u1');
   });
 });
+
+describe('Withdrawal Tests', () => {
+  beforeEach(() => {
+    contractFunctions.deposit('sender1', 3000000);
+    contractState.currentBlockHeight = 1441;
+  });
+
+  it('should allow withdrawal after sufficient votes', () => {
+    contractFunctions.vote('sender1');
+    const result = contractFunctions.withdraw('sender1', 1000000);
+    
+    expect(result.success).toBe(true);
+  });
+
+  it('should prevent withdrawal without sufficient votes', () => {
+    const result = contractFunctions.withdraw('sender1', 1000000);
+    
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('u1');
+  });
+});
