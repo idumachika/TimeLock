@@ -163,3 +163,25 @@ describe('Milestone Tests', () => {
     expect(result.error).toBe('u1');
   });
 });
+
+describe('Emergency Recovery Tests', () => {
+  beforeEach(() => {
+    contractFunctions.deposit('sender1', 5000000);
+  });
+
+  it('should allow emergency initiation with sufficient stake', () => {
+    const result = contractFunctions.initiateEmergency('sender1');
+    
+    expect(result.success).toBe(true);
+    expect(contractState.emergencyState).toBe(true);
+    expect(contractState.emergencyVotes).toBeGreaterThan(0);
+  });
+
+  it('should prevent emergency initiation with insufficient stake', () => {
+    contractFunctions.deposit('sender2', 100000);
+    const result = contractFunctions.initiateEmergency('sender2');
+    
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('u1');
+  });
+});
